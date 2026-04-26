@@ -46,6 +46,20 @@ Example:
 
 ---
 
+## Real Example Findings
+
+### google.com
+- Organization: Google LLC
+- Registrar: MarkMonitor
+- Name Servers: ns1–ns4.google.com
+
+### 8.8.8.8
+- NetRange: 8.8.8.0/24
+- Organization: Google LLC
+- Location: US
+
+---
+
 ## 5. Exploitation Value 🎯
 
 ### 🔥 High Probability OSCP
@@ -69,6 +83,12 @@ IF name servers found:
 
 IF IP range found:
   → expand scan scope
+
+Use netblock for:
+  → subnet scanning
+
+Use org name for:
+  → OSINT
 
 ---
 
