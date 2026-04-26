@@ -2,14 +2,14 @@
 
 ## Basic Usage
 
-whois <domain>
-whois <IP>
+`whois <domain>`
+`whois <IP>`
 
 ---
 
 ## Specify WHOIS Server
 
-whois -h <server> <target>
+`whois -h <server> <target>`
 
 ---
 
