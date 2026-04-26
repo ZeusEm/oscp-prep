@@ -1,4 +1,4 @@
-# Cybersecurity Knowledge Base
+# OSCP Prep
 
 ## Overview
 
