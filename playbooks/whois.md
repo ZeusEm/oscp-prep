@@ -9,28 +9,28 @@
 
 ## 1. Basic Domain Lookup
 
-whois <domain>
+`whois <domain>`
 
 Example:
-whois megacorpone.com
+`whois megacorpone.com`
 
 ---
 
 ## 2. Specify WHOIS Server
 
-whois -h <whois_server> <domain>
+`whois -h <whois_server> <domain>`
 
 Example:
-whois -h 192.168.50.251 megacorpone.com
+`whois -h 192.168.50.251 megacorpone.com`
 
 ---
 
 ## 3. Reverse Lookup (IP → Owner Info)
 
-whois <IP>
+`whois <IP>`
 
 Example:
-whois 8.8.8.8
+`whois 8.8.8.8`
 
 ---
 
