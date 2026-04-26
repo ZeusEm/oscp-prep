@@ -1,22 +1,18 @@
-# Enumeration Methodology
+## 🌐 Domain Enumeration
 
-## Step 1: Initial Scan
-nmap -sC -sV -p- <IP> -oN initial.txt
+IF target includes domain:
 
-## Step 2: Identify Services
-- HTTP → web playbook
-- SMB → smb playbook
-- FTP → ftp playbook
+  → run:
+    whois <domain>
 
-## Step 3: Validate Access
-- Anonymous login
-- Default creds
-- Version check
+  → extract:
+    - names
+    - emails
+    - name servers
+    - IP ranges
 
-## Step 4: Expand
-- More ports
-- Subdomains
-- Internal pivot
-
-## Loop
-Enumeration → Exploitation → PrivEsc → Repeat
+  → pivot:
+    IF names → username list
+    IF email → login attempts
+    IF name servers → DNS enum
+    IF IP range → expand scanning
