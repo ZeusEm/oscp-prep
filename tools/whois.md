@@ -1,5 +1,8 @@
 # whois
 
+## Description
+WHOIS is a TCP-based protocol (port 43) used to query domain and IP ownership information.
+
 ## Basic Usage
 
 `whois <domain>`
@@ -10,6 +13,11 @@
 ## Specify WHOIS Server
 
 `whois -h <server> <target>`
+
+`-h <server>` → specify WHOIS server
+
+Example:
+`whois -h 192.168.50.251 example.com`
 
 ---
 
