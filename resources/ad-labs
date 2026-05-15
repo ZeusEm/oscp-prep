@@ -1,0 +1,24 @@
+# Active Directory Practice Labs
+
+# HackSmarter Free AD Lab
+
+https://www.hacksmarter.org/courses/8da0b008-7692-4c3f-a861-b7a02a536e7b
+
+---
+
+# Purpose
+
+Practice:
+- AD enumeration
+- authentication attacks
+- lateral movement
+- privilege escalation
+
+---
+
+# Recommended Timing
+
+Begin AFTER:
+- Windows fundamentals
+- SMB enumeration
+- basic Active Directory theory
