@@ -1,134 +1,65 @@
-# OSCP Prep
+# OSCP Preparation Repository
 
-## Overview
-
-This repository is a structured, execution-focused cybersecurity knowledge base built for:
-
-* Offensive security training (OSCP-aligned)
-* Practical penetration testing workflows
-* Long-term professional reference (including CISSP concepts where relevant)
-
-The primary focus is **actionable methodology**, not theoretical notes.
-
----
-
-## Philosophy
-
-This repository follows a strict principle:
-
-> If it cannot be executed during an engagement, it does not belong here.
-
-All content is:
-
-* Command-driven
-* Structured for speed
-* Designed for real-world and exam scenarios
+Operational knowledge base for:
+- OSCP
+- PWK
+- penetration testing
+- enumeration
+- privilege escalation
+- Active Directory
+- reporting
+- operational methodology
 
 ---
 
-## Repository Structure
+# Philosophy
 
-```
-/methodology/   → Core attack workflows and decision logic
-/playbooks/     → Service-based enumeration and exploitation guides
-/tools/         → Tool usage and command references
-/cheatsheets/   → Fast-access command snippets
-/machines/      → Lab and box walkthrough notes
-/reporting/     → Reporting templates and formats
-/scripts/       → Automation and helper scripts
-```
+This repository is:
+- execution focused
+- operationally structured
+- exam oriented
+- continuously refined
 
----
-
-## Usage
-
-### During Preparation
-
-* Study topics
-* Convert learning into structured notes
-* Continuously refine playbooks and methodology
-
-### During Practice / Labs
-
-* Follow methodology strictly
-* Use playbooks for enumeration and exploitation
-* Update notes with new findings
-
-### During Exam (Offline Mode)
-
-* Use local copy of repository
-* Search and execute commands directly
-* Treat notes as primary reference system
+Goal:
+Reduce cognitive load during:
+- labs
+- engagements
+- exams
+- reporting
 
 ---
 
-## Contribution Guidelines
+# Core Workflow
 
-To maintain consistency and usability:
+Recon → Enumerate → Exploit → Enumerate Again → PrivEsc → Document
 
-### 1. Keep Notes Execution-Focused
-
-* Avoid theory-heavy content
-* Prioritize commands and workflows
+Enumeration never stops.
 
 ---
 
-### 2. Follow Standard Format
+# Structure
 
-Each file should include:
-
-```
-# Title
-
-## When to Use
-## Commands
-## What to Check
-## Exploitation Path
-## Pivot / Next Steps
-```
+| Directory | Purpose |
+|---|---|
+| methodology | Thinking models and workflows |
+| playbooks | Service/attack workflows |
+| tools | Tool-specific usage |
+| cheatsheets | Rapid recall references |
+| resources | Practice labs and external resources |
+| reporting | Reporting templates |
 
 ---
 
-### 3. One Topic per File
+# Rules
 
-* No large, unstructured documents
-
----
-
-### 4. Maintain Consistency
-
-* Use clear naming conventions
-* Keep formatting uniform
+- No passive note taking
+- Every concept must become executable
+- Every workflow must be reproducible
+- Notes must reduce exam stress
+- Notes must support reporting
 
 ---
 
-## Key Principles
+# Long-Term Goal
 
-* Speed > Completeness
-* Clarity > Complexity
-* Execution > Explanation
-* Methodology > Memory
-
----
-
-## Disclaimer
-
-This repository is intended for educational and authorized security testing purposes only. Do not use these techniques on systems without proper authorization.
-
----
-
-## Roadmap
-
-* [ ] Core methodology development
-* [ ] Service-based playbooks (SMB, HTTP, FTP, etc.)
-* [ ] Privilege escalation frameworks
-* [ ] Active Directory attack workflows
-* [ ] Automation scripts
-
----
-
-## Final Note
-
-This is not a collection of notes.
-
-It is a **personal offensive security execution system**.
+Build a reusable professional penetration testing knowledge base.
