@@ -1,4 +1,4 @@
-# Linux Permissions Cheatsheet
+# Linux File Permissions Cheatsheet
 
 # View Permissions
 
@@ -24,7 +24,7 @@ chmod -x file
 
 ---
 
-# Common Numeric Modes
+# Numeric Modes
 
 ```text
 644 = rw-r--r--
@@ -34,7 +34,7 @@ chmod -x file
 
 ---
 
-# Set Numeric Permissions
+# Set Permissions
 
 ```bash
 chmod 755 script.py
@@ -42,7 +42,7 @@ chmod 755 script.py
 
 ---
 
-# Run Executable
+# Execute File
 
 ```bash
 ./script.py
@@ -70,4 +70,26 @@ mv old.txt new.txt
 
 ```bash
 mv file.txt /path/
+```
+
+---
+
+# Permission Symbols
+
+```text
+r = 4
+w = 2
+x = 1
+```
+
+---
+
+# Important OSCP Reminder
+
+Many downloaded exploits lose executable permissions.
+
+Fix immediately:
+
+```bash
+chmod +x exploit.py
 ```
