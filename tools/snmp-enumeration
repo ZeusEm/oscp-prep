@@ -1,0 +1,464 @@
+# SNMP Enumeration
+
+## TL;DR
+
+SNMP is a network management protocol running on **UDP port 161**. It is
+frequently misconfigured and leaks critical system information — usernames,
+running processes, installed software, and hidden open ports — with little to
+no authentication. It is one of the highest-value enumeration targets on the
+exam.
+
+---
+
+## What is SNMP and Why Does it Matter?
+
+SNMP (Simple Network Management Protocol) is a protocol designed so that
+network administrators can **remotely monitor and manage devices** — routers,
+switches, printers, Windows servers, Linux machines — from a central location.
+Think of it as a built-in "status dashboard" baked into most networked devices.
+
+The problem for defenders (and the opportunity for us) is:
+
+* It runs on **UDP**, not TCP. UDP is connectionless — no handshake, no
+  session. This means many automated TCP-only scans **completely miss it**.
+* Versions 1, 2, and 2c (the most common) have **no encryption and weak
+  authentication**. Traffic can be intercepted on a local network.
+* Authentication is done via a **community string** — essentially a plaintext
+  password. The default is almost always `public` (read) and `private` (write).
+* Administrators routinely leave defaults unchanged.
+
+SNMPv3 added encryption and proper auth, but is far less commonly deployed.
+
+---
+
+## What is a Community String?
+
+A community string is SNMP's version of a password. There are two types:
+
+| Type    | Default Value | Access Level                         |
+| ------- | ------------- | ------------------------------------ |
+| Public  | `public`      | Read-only — you can query the device |
+| Private | `private`     | Read-write — you can change settings |
+
+When we query an SNMP device, we must supply the correct community string or
+we get nothing back. Since most admins never change defaults, we try `public`
+first, then `private`, then a short list of other common values like `manager`.
+
+**Why don't we use Kali's existing wordlists (like `/usr/share/wordlists/`)?**
+
+You could — and for deeper brute forcing you should. But SNMP community
+strings are overwhelmingly defaults. The entire population of likely strings is
+3-5 words. Using a 10,000-line wordlist against UDP/161 across a `/24` subnet
+would take forever and generate noise. We build a lean, targeted list because
+precision beats volume here. Once you know this, you can expand the list if
+defaults fail.
+
+---
+
+## What is the MIB Tree?
+
+MIB stands for **Management Information Base**. It is the structured database
+that SNMP uses to store all information about a device. Think of it as a filing
+cabinet, organized in a tree structure, where every "drawer" has a unique
+numeric address called an **OID (Object Identifier)**.
+
+Example OID: `1.3.6.1.4.1.77.1.2.25`
+
+Reading it left to right is like following a folder path:
+
+* `1.3.6.1` = Internet standard
+* `1.4.1.77` = Microsoft's branch
+* `1.2.25` = Local user accounts
+
+Every piece of information about the device — its hostname, users, running
+processes, open ports, installed software — lives at a specific OID address.
+If you know the address, you can query that exact drawer. If you don't, you
+dump the whole cabinet and grep through it.
+
+**Why does this matter for us?**
+
+On a Windows target, the MIB tree exposes:
+
+* **Local user accounts** (feed directly into password attacks)
+* **Running processes** (reveals AV software, vulnerable applications)
+* **Installed software with versions** (searchsploit fodder)
+* **TCP ports listening internally** (services hidden from external nmap scans)
+* **Hostnames and emails** (AD recon, social engineering)
+
+All of this, unauthenticated, with just the community string `public`.
+
+---
+
+## Windows MIB OID Reference
+
+Memorise these or keep this table open during the exam:
+
+| OID                      | What It Gives You         |
+| ------------------------ | ------------------------- |
+| `1.3.6.1.2.1.25.1.6.0`   | System Processes          |
+| `1.3.6.1.2.1.25.4.2.1.2` | Running Program Names     |
+| `1.3.6.1.2.1.25.4.2.1.4` | Full Process Paths        |
+| `1.3.6.1.2.1.25.2.3.1.4` | Storage Units (disks)     |
+| `1.3.6.1.2.1.25.6.3.1.2` | Installed Software + Ver. |
+| `1.3.6.1.4.1.77.1.2.25`  | Local User Accounts       |
+| `1.3.6.1.2.1.6.13.1.3`   | TCP Listening Ports       |
+
+---
+
+## Execution Workflow
+
+### Step 1 — Discover SNMP Hosts on the Subnet
+
+We use nmap with `-sU` (UDP scan) and pin it to port 161. Without `-sU`, nmap
+defaults to TCP and you will **never see SNMP**.
+
+```bash
+sudo nmap -sU --open -p 161 `<SUBNET>`/24 -oG open-snmp.txt
+```
+
+* `-sU` → UDP scan mode
+* `--open` → only show hosts where port is confirmed open
+* `-p 161` → only SNMP port, keeps it fast
+* `-oG` → greppable output format, easy to parse
+
+```bash
+# See which hosts responded
+grep "open" open-snmp.txt
+```
+
+---
+
+### Step 2 — Brute Force Community Strings (onesixtyone)
+
+`onesixtyone` is a fast SNMP scanner that tries a list of community strings
+against a list of IPs simultaneously. It's built for exactly this job — much
+faster than running snmpwalk per host manually.
+
+```bash
+# Build your community string list
+echo public > community.txt
+echo private >> community.txt
+echo manager >> community.txt
+
+# Build your IP target list from subnet
+for ip in $(seq 1 254); do echo `<SUBNET>`.$ip; done > ips.txt
+
+# Fire
+onesixtyone -c community.txt -i ips.txt
+```
+
+**Reading the output:**
+
+```text
+192.168.50.151 [public] Hardware: Intel64 Family 6 ...Windows Version 6.3...
+```
+
+This tells you:
+
+* IP `192.168.50.151` accepted community string `public`
+* The target responded successfully
+* The host leaked its system description
+* You now have a valid SNMP entry point
+
+The value inside square brackets (`[public]`) is the accepted community string.
+You need it for all future `snmpwalk` queries.
+
+---
+
+### Step 3 — Full MIB Dump (snmpwalk)
+
+`snmpwalk` is the primary SNMP query tool. It walks the entire MIB tree of a
+target and prints every OID and its value. Without a specific OID argument, it
+dumps everything.
+
+```bash
+# Full dump — save to file, grep later
+snmpwalk -c `<COMMUNITY>` -v1 -t 10 `<TARGET>` > snmp-full-`<TARGET>`.txt
+```
+
+Flag breakdown:
+
+* `-c <COMMUNITY>` → the community string you found (usually `public`)
+* `-v1` → use SNMP version 1 (most compatible; also try `-v2c` if v1 fails)
+* `-t 10` → timeout 10 seconds per request; default is too short on slow/VPN
+  networks and causes missed data
+* `> file.txt` → save everything; you'll grep through it repeatedly
+
+```bash
+# Quick grep for interesting strings in the dump
+grep -i "user\|admin\|password\|email\|software\|version" snmp-full-`<TARGET>`.txt
+```
+
+---
+
+### Step 4 — Targeted OID Queries
+
+For speed during the exam, query specific OIDs directly instead of waiting for
+a full dump. Run all of these against every SNMP-accessible Windows target:
+
+```bash
+# User accounts — feed into password attacks
+snmpwalk -c `<COMMUNITY>` -v1 `<TARGET>` 1.3.6.1.4.1.77.1.2.25
+
+# Running processes — look for AV names, vulnerable software
+snmpwalk -c `<COMMUNITY>` -v1 `<TARGET>` 1.3.6.1.2.1.25.4.2.1.2
+
+# Process full paths — reveals exact binary locations
+snmpwalk -c `<COMMUNITY>` -v1 `<TARGET>` 1.3.6.1.2.1.25.4.2.1.4
+
+# Installed software with version numbers — searchsploit this
+snmpwalk -c `<COMMUNITY>` -v1 `<TARGET>` 1.3.6.1.2.1.25.6.3.1.2
+
+# Storage/disk info
+snmpwalk -c `<COMMUNITY>` -v1 `<TARGET>` 1.3.6.1.2.1.25.2.3.1.4
+
+# TCP listening ports — reveals internally hidden services
+snmpwalk -c `<COMMUNITY>` -v1 `<TARGET>` 1.3.6.1.2.1.6.13.1.3
+```
+
+**The TCP port query deserves special attention.**
+
+When you run nmap externally, you only see ports reachable through the network
+path and firewall. But SNMP can reveal ALL ports listening internally on the
+machine, including services bound only to `127.0.0.1` or blocked externally.
+
+This can expose:
+
+* hidden admin panels
+* localhost-only web apps
+* databases
+* WinRM
+* backup services
+* management interfaces
+
+These often become pivot opportunities later.
+
+---
+
+## What to Do With What You Find
+
+| Finding                   | Immediate Next Action                         |
+| ------------------------- | --------------------------------------------- |
+| Usernames                 | Add to users list → password spraying         |
+| Email addresses           | Domain confirmed, possible phishing/OSINT     |
+| AV process names          | Know what you're up against before exploiting |
+| Vulnerable software + ver | `searchsploit <name> <version>`               |
+| Internal TCP ports        | Enumerate those services (may need tunneling) |
+| Hostname / domain name    | Confirms AD target, feeds DNS enumeration     |
+| Private community string  | Attempt TFTP config pull on network hardware  |
+
+---
+
+## Gotchas & Exam Tips
+
+* **Always run UDP scans.** TCP-only recon misses SNMP entirely.
+* If `-v1` returns nothing, retry with `-v2c`.
+* The `-t 10` timeout matters heavily over VPNs and slow networks.
+* Cross-reference running processes with installed software versions.
+* SNMP on routers/switches with the `private` string can become catastrophic.
+* Document every username you discover.
+
+---
+
+## Tools Reference
+
+| Tool          | What It Is                         | When to Use                     |
+| ------------- | ---------------------------------- | ------------------------------- |
+| `nmap -sU`    | UDP port scanner                   | Initial discovery across subnet |
+| `onesixtyone` | SNMP community string brute forcer | After discovery, before query   |
+| `snmpwalk`    | SNMP MIB tree query tool           | Once community string is known  |
+
+---
+
+## Next Steps After SNMP Enum
+
+* Usernames found → password attacks
+* Internal ports found → enumerate those services directly
+* Software versions found → `searchsploit <software> <version>`
+* Network device with private community → attempt TFTP config exfiltration
+* Email/hostname found → feed into AD/DNS enumeration
+
+---
+
+# Addendum — Real World Execution Analysis & OSCP Thinking
+
+## Your Real-World Enumeration
+
+You correctly identified:
+
+* Your subnet using `ip addr`
+* A live SNMP service on `192.168.5.2`
+* UDP/161 open using:
+
+```bash
+sudo nmap -sU --open -p 161 192.168.5.0/24
+```
+
+This was already good operational thinking:
+
+* You identified the correct interface (`wls5`)
+* Derived the subnet properly (`192.168.5.0/24`)
+* Performed UDP scanning instead of default TCP scanning
+
+Most beginners miss SNMP entirely because they never run `-sU`.
+
+---
+
+## Important Observation — “Open” Does NOT Mean “Usable”
+
+Your scan showed:
+
+```text
+161/udp open snmp
+```
+
+But every `snmpwalk` attempt timed out:
+
+```text
+Timeout: No Response from 192.168.5.2
+```
+
+This is an extremely important OSCP lesson:
+
+> An open UDP port does NOT guarantee the service will answer queries.
+
+Possible reasons:
+
+* SNMP enabled but restricted by ACL
+* Community strings incorrect
+* Device only responds to trusted management hosts
+* Rate limiting
+* Firewall filtering SNMP payloads
+* Device uses SNMPv3 only
+* Embedded/IoT devices exposing UDP/161 without full SNMP support
+
+This is normal in real environments.
+
+---
+
+## Why `onesixtyone` Returned Nothing
+
+You ran:
+
+```bash
+onesixtyone -c community.txt -i ips.txt
+```
+
+But received no valid response.
+
+This means:
+
+* none of your tested community strings were accepted
+* OR the device silently dropped requests
+* OR SNMP queries are ACL restricted
+
+This is still valuable reconnaissance.
+
+You now know:
+
+* UDP/161 exists
+* Some SNMP-like service is listening
+* Default strings are not accepted
+* Further brute force is probably low-value unless the target is high priority
+
+This is exactly the kind of decision-making OSCP expects.
+
+---
+
+## Your SNMPv3 Error Was Correct and Important
+
+You ran:
+
+```bash
+snmpwalk -c public -v3 -t 10 192.168.5.2
+```
+
+And got:
+
+```text
+snmpwalk: No securityName specified
+```
+
+This is expected because SNMPv3 is completely different from v1/v2c.
+
+SNMPv3 requires:
+
+* username
+* authentication method
+* authentication password
+* sometimes encryption parameters
+
+Meaning:
+
+* there is no “community string” concept anymore
+* `-c public` becomes invalid logic in v3
+
+Important OSCP takeaway:
+
+* If v1/v2c fail, do not blindly pivot to v3 unless you actually have credentials.
+
+---
+
+## Key OSCP Mentality
+
+The biggest lesson from your execution is this:
+
+> Enumeration is not about getting lucky responses.
+> Enumeration is about reducing uncertainty.
+
+From your execution, you already learned:
+
+* the subnet layout
+* the active hosts
+* that SNMP exists
+* that default strings fail
+* that SNMPv3 may be in play
+* that the target may be hardened
+* that further effort may have diminishing returns
+
+That is successful enumeration.
+
+Many students waste 45+ minutes brute forcing a dead SNMP lead during the exam.
+
+A better OSCP operator:
+
+1. identifies the service
+2. tests the obvious/defaults
+3. extracts quick value
+4. moves on if resistance increases
+
+---
+
+## Practical Exam Workflow
+
+Use this exact mental model:
+
+```text
+UDP/161 open?
+    ↓
+Try public/private/manager
+    ↓
+Success?
+    ├── YES → full MIB dump + OID enumeration
+    └── NO  → note findings and move on
+```
+
+Do not tunnel vision on SNMP if:
+
+* defaults fail
+* no responses
+* no credentials
+* no evidence of weak configuration
+
+OSCP rewards breadth and prioritisation more than stubbornness.
+
+---
+
+## Final Operational Takeaways
+
+* UDP enumeration is mandatory.
+* “Open” ≠ “exploitable”.
+* Default community strings are the fast win.
+* SNMPv3 changes the auth model entirely.
+* Fast validation + rapid decision-making beats endless brute forcing.
+* Enumeration findings are intelligence, even when exploitation fails.
